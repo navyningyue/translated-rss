@@ -27,7 +27,7 @@ RSS / Sitemap
 5. Add repository secret `AI_API_KEY`.
 6. Add repository variable `AI_MODEL`, for example `gpt-4o-mini`.
 7. Optional: add repository variable `AI_BASE_URL` for an OpenAI-compatible provider.
-8. Go to `Actions` and run `Build translated RSS and deploy Pages`.
+8. Go to `Actions` and run `Build translated RSS and deploy Pages`, or push a new commit to `main`.
 
 After deployment, subscribe to:
 
@@ -115,7 +115,7 @@ public/index.html
 
 ## Schedule
 
-The workflow runs every 6 hours:
+The workflow runs on push to `main` and every 6 hours:
 
 ```yaml
 - cron: "17 */6 * * *"
