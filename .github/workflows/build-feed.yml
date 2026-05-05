@@ -15,14 +15,14 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   CONFIG_PATH: config/sources.json
   OUTPUT_DIR: public
   CACHE_DIR: .cache
-  MAX_TOTAL_ITEMS: "40"
+  MAX_TOTAL_ITEMS: "5"
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
   AI_BASE_URL: ${{ vars.AI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/' }}
   AI_MODEL: ${{ vars.AI_MODEL || 'gemini-flash-latest' }}
