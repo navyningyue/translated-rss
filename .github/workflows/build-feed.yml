@@ -6,7 +6,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 */2 * * *"
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ env:
   CONFIG_PATH: config/sources.json
   OUTPUT_DIR: public
   CACHE_DIR: .cache
-  MAX_TOTAL_ITEMS: "5"
+  MAX_TOTAL_ITEMS: "10"
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
   AI_BASE_URL: https://api.edgefn.net/v1
   AI_MODEL: DeepSeek-R1-0528-Qwen3-8B

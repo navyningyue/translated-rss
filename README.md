@@ -143,10 +143,18 @@ public/index.html
 
 ## Schedule
 
-The workflow runs on push to `main` and every 6 hours:
+The workflow runs on push to `main` and every 2 hours:
 
 ```yaml
-- cron: "17 */6 * * *"
+- cron: "17 */2 * * *"
 ```
 
-Adjust it in `.github/workflows/build-feed.yml`.
+Current output limits:
+
+```text
+MAX_TOTAL_ITEMS=10
+Engineering.com max_items=6
+DPIT max_items=4
+```
+
+Adjust the total limit in `.github/workflows/build-feed.yml` and per-source limits in `config/sources.json`.

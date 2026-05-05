@@ -13,7 +13,7 @@
       "enabled": true,
       "type": "rss",
       "url": "https://www.engineering.com/feed/",
-      "max_items": 3
+      "max_items": 6
     },
     {
       "name": "\u673a\u5668\u4e4b\u5fc3",
@@ -36,7 +36,7 @@
       "include_any": [
         "/zh/content/"
       ],
-      "max_items": 2
+      "max_items": 4
     }
   ]
 }
