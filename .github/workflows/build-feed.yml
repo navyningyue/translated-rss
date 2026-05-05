@@ -24,8 +24,8 @@ env:
   CACHE_DIR: .cache
   MAX_TOTAL_ITEMS: "5"
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
-  AI_BASE_URL: ${{ vars.AI_BASE_URL || 'https://api.openai.com/v1' }}
-  AI_MODEL: ${{ vars.AI_MODEL || 'gpt-4o-mini' }}
+  AI_BASE_URL: https://api.edgefn.net/v1
+  AI_MODEL: DeepSeek-R1-0528-Qwen3-8B
   AI_DELAY_SECONDS: ${{ vars.AI_DELAY_SECONDS || '12' }}
 
 jobs:

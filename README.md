@@ -24,9 +24,9 @@ RSS / Sitemap
 2. Go to `Settings` -> `Pages`.
 3. Set `Build and deployment` -> `Source` to `GitHub Actions`.
 4. Go to `Settings` -> `Secrets and variables` -> `Actions`.
-5. Add repository secret `AI_API_KEY`. Put only the API key value in this Secret.
-6. Add repository variable `AI_MODEL`, for example `DeepSeek-R1-0528-Qwen3-8B`.
-7. Add repository variable `AI_BASE_URL` for your OpenAI-compatible provider, for example `https://api.openai.com/v1` or the base URL shown in your provider's docs.
+5. Add repository secret `AI_API_KEY`. Put only the API key value in this Secret. Do not include the `Bearer ` prefix.
+6. No repository variable is required for `AI_MODEL` or `AI_BASE_URL`; the workflow already uses the Baishan/OpenAI-compatible defaults.
+7. Optional: add repository variable `AI_DELAY_SECONDS` if you want to slow down requests.
 8. Go to `Actions` and run `Build translated RSS and deploy Pages`, or push a new commit to `main`.
 
 After deployment, subscribe to:
@@ -87,12 +87,19 @@ Environment variables:
 
 ```text
 AI_API_KEY       GitHub Secret. Required for hosted providers.
-AI_BASE_URL      GitHub Variable. Defaults to https://api.openai.com/v1.
-AI_MODEL         GitHub Variable. Defaults to gpt-4o-mini.
+AI_BASE_URL      Set in the workflow: https://api.edgefn.net/v1.
+AI_MODEL         Set in the workflow: DeepSeek-R1-0528-Qwen3-8B.
 AI_DELAY_SECONDS GitHub Variable. Defaults to 12.
 ```
 
-For `DeepSeek-R1-0528-Qwen3-8B`, set `AI_MODEL` to that exact model name and set `AI_BASE_URL` to the OpenAI-compatible base URL from the provider that issued your key. The model name alone is not enough to infer the correct endpoint.
+This repository is configured for Baishan/OpenAI-compatible chat completions by default:
+
+```text
+AI_BASE_URL=https://api.edgefn.net/v1
+AI_MODEL=DeepSeek-R1-0528-Qwen3-8B
+```
+
+If old repository variables still exist from another provider, this workflow ignores them for `AI_BASE_URL` and `AI_MODEL`.
 
 If `AI_API_KEY` is not set, the feed is still generated, but English items stay mostly untranslated and are marked as fallback.
 
@@ -120,7 +127,7 @@ With AI:
 
 ```powershell
 $env:AI_API_KEY="your-key"
-$env:AI_BASE_URL="https://api.openai.com/v1"
+$env:AI_BASE_URL="https://api.edgefn.net/v1"
 $env:AI_MODEL="DeepSeek-R1-0528-Qwen3-8B"
 python scripts/build_feed.py
 ```
