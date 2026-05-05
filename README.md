@@ -24,9 +24,9 @@ RSS / Sitemap
 2. Go to `Settings` -> `Pages`.
 3. Set `Build and deployment` -> `Source` to `GitHub Actions`.
 4. Go to `Settings` -> `Secrets and variables` -> `Actions`.
-5. Add repository secret `AI_API_KEY`.
-6. Add repository variable `AI_MODEL`, for example `gpt-4o-mini`.
-7. Optional: add repository variable `AI_BASE_URL` for an OpenAI-compatible provider.
+5. Add repository secret `AI_API_KEY`. Put only the API key value in this Secret.
+6. Add repository variable `AI_MODEL`, for example `DeepSeek-R1-0528-Qwen3-8B`.
+7. Add repository variable `AI_BASE_URL` for your OpenAI-compatible provider, for example `https://api.openai.com/v1` or the base URL shown in your provider's docs.
 8. Go to `Actions` and run `Build translated RSS and deploy Pages`, or push a new commit to `main`.
 
 After deployment, subscribe to:
@@ -76,17 +76,37 @@ The Machine Heart source is included as a disabled example. Its sitemap is reach
 
 ## AI Translation
 
-The script uses an OpenAI-compatible Chat Completions API.
+The script uses an OpenAI-compatible Chat Completions API:
+
+```text
+POST {AI_BASE_URL}/chat/completions
+Authorization: Bearer ${AI_API_KEY}
+```
 
 Environment variables:
 
 ```text
-AI_API_KEY    required for hosted providers
-AI_BASE_URL   optional, defaults to https://api.openai.com/v1
-AI_MODEL      optional, defaults to gpt-4o-mini
+AI_API_KEY       GitHub Secret. Required for hosted providers.
+AI_BASE_URL      GitHub Variable. Defaults to https://api.openai.com/v1.
+AI_MODEL         GitHub Variable. Defaults to gpt-4o-mini.
+AI_DELAY_SECONDS GitHub Variable. Defaults to 12.
 ```
 
+For `DeepSeek-R1-0528-Qwen3-8B`, set `AI_MODEL` to that exact model name and set `AI_BASE_URL` to the OpenAI-compatible base URL from the provider that issued your key. The model name alone is not enough to infer the correct endpoint.
+
 If `AI_API_KEY` is not set, the feed is still generated, but English items stay mostly untranslated and are marked as fallback.
+
+The parser accepts plain JSON, fenced JSON, and outputs with R1-style `<think>...</think>` reasoning before the JSON. The final content still needs to contain one JSON object with these fields:
+
+```json
+{
+  "title_zh": "中文标题",
+  "topic_zh": "主题",
+  "summary_zh": "中文简介",
+  "keywords_zh": ["关键词1", "关键词2"],
+  "relevance": 8
+}
+```
 
 ## Local Test
 
@@ -100,7 +120,8 @@ With AI:
 
 ```powershell
 $env:AI_API_KEY="your-key"
-$env:AI_MODEL="gpt-4o-mini"
+$env:AI_BASE_URL="https://api.openai.com/v1"
+$env:AI_MODEL="DeepSeek-R1-0528-Qwen3-8B"
 python scripts/build_feed.py
 ```
 

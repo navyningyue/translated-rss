@@ -41,14 +41,13 @@ USER_AGENT = os.getenv(
 )
 
 AI_API_KEY = os.getenv("AI_API_KEY") or ""
-AI_BASE_URL = (
-    os.getenv("AI_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
-).rstrip("/")
-AI_MODEL = os.getenv("AI_MODEL") or "gemini-flash-latest"
+AI_BASE_URL = (os.getenv("AI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+AI_MODEL = os.getenv("AI_MODEL") or "gpt-4o-mini"
 AI_TIMEOUT = env_int("AI_TIMEOUT", 45)
 AI_MAX_INPUT_CHARS = env_int("AI_MAX_INPUT_CHARS", 3500)
 AI_DELAY_SECONDS = env_int("AI_DELAY_SECONDS", 12)
 AI_ENABLED = (os.getenv("AI_ENABLED") or "auto").lower()
+AI_ALLOW_NO_KEY = (os.getenv("AI_ALLOW_NO_KEY") or "").lower() in {"1", "true", "yes", "on"}
 
 
 class HeadParser(HTMLParser):
@@ -443,8 +442,7 @@ def collect_items(config):
 def ai_is_available():
     if AI_ENABLED in {"0", "false", "no", "off"}:
         return False
-    supplied_base_url = bool(os.getenv("AI_BASE_URL"))
-    return bool(AI_API_KEY or supplied_base_url)
+    return bool(AI_API_KEY or AI_ALLOW_NO_KEY)
 
 
 def cache_key(item):
@@ -473,16 +471,110 @@ def save_ai_cache(cache):
     AI_CACHE_PATH.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def strip_reasoning_blocks(text):
+    text = str(text or "").replace("\ufeff", "").strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.I | re.S).strip()
+    text = re.sub(r"^.*?</think>", "", text, flags=re.I | re.S).strip()
+    return text
+
+
+def iter_json_object_candidates(text):
+    in_string = False
+    escaped = False
+    depth = 0
+    start = None
+
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == "}" and depth:
+            depth -= 1
+            if depth == 0 and start is not None:
+                yield text[start : index + 1]
+                start = None
+
+
+def card_score(value):
+    if not isinstance(value, dict):
+        return 0
+    expected = {"title_zh", "topic_zh", "summary_zh", "keywords_zh", "relevance"}
+    return sum(1 for key in expected if key in value)
+
+
 def parse_json_from_text(text):
-    text = text.strip()
-    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.S)
-    if fence:
-        text = fence.group(1).strip()
-    start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        text = text[start : end + 1]
-    return json.loads(text)
+    text = strip_reasoning_blocks(text)
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    fenced_blocks = re.findall(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.I | re.S)
+    candidates = []
+    for block in fenced_blocks:
+        candidates.extend(iter_json_object_candidates(strip_reasoning_blocks(block)))
+    candidates.extend(iter_json_object_candidates(text))
+
+    parsed = []
+    for candidate in candidates:
+        try:
+            parsed.append(json.loads(candidate))
+        except json.JSONDecodeError:
+            continue
+
+    if parsed:
+        return max(parsed, key=card_score)
+
+    preview = truncate(text, 240)
+    raise ValueError(f"Could not parse JSON object from model output: {preview}")
+
+
+def normalize_keywords(value):
+    if isinstance(value, list):
+        return [normalize_space(str(keyword)) for keyword in value if normalize_space(str(keyword))]
+    if isinstance(value, str):
+        return [part for part in re.split(r"[,，、;；\n]+", value) if normalize_space(part)]
+    return []
+
+
+def normalize_relevance(value):
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, float):
+        number = round(value)
+    else:
+        match = re.search(r"\d+", str(value or ""))
+        number = int(match.group(0)) if match else 5
+    return min(10, max(1, number))
+
+
+def normalize_ai_card(card):
+    if not isinstance(card, dict):
+        raise ValueError("AI output JSON must be an object")
+    normalized = {
+        "title_zh": normalize_space(card.get("title_zh")),
+        "topic_zh": normalize_space(card.get("topic_zh")),
+        "summary_zh": normalize_space(card.get("summary_zh")),
+        "keywords_zh": normalize_keywords(card.get("keywords_zh")),
+        "relevance": normalize_relevance(card.get("relevance")),
+    }
+    missing = [key for key in ("title_zh", "topic_zh", "summary_zh") if not normalized[key]]
+    if missing:
+        raise ValueError(f"AI output JSON missing required fields: {', '.join(missing)}")
+    return normalized
 
 
 def call_ai(item):
@@ -525,8 +617,15 @@ def call_ai(item):
         try:
             with urllib.request.urlopen(req, timeout=AI_TIMEOUT) as response:
                 response_data = json.loads(response.read().decode("utf-8"))
-            content = response_data["choices"][0]["message"]["content"]
-            return parse_json_from_text(content)
+            choice = response_data["choices"][0]
+            message = choice.get("message") or {}
+            content = message.get("content") or choice.get("text") or ""
+            if isinstance(content, list):
+                content = "\n".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
+            return normalize_ai_card(parse_json_from_text(content))
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"AI request failed: HTTP {exc.code} {body[:500]}") from exc

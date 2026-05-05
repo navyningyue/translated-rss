@@ -24,8 +24,8 @@ env:
   CACHE_DIR: .cache
   MAX_TOTAL_ITEMS: "5"
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
-  AI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
-  AI_MODEL: gemini-flash-latest
+  AI_BASE_URL: ${{ vars.AI_BASE_URL || 'https://api.openai.com/v1' }}
+  AI_MODEL: ${{ vars.AI_MODEL || 'gpt-4o-mini' }}
   AI_DELAY_SECONDS: ${{ vars.AI_DELAY_SECONDS || '12' }}
 
 jobs:
