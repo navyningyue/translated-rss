@@ -44,9 +44,10 @@ AI_API_KEY = os.getenv("AI_API_KEY") or ""
 AI_BASE_URL = (
     os.getenv("AI_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
 ).rstrip("/")
-AI_MODEL = os.getenv("AI_MODEL") or "gemini-3-flash-preview"
+AI_MODEL = os.getenv("AI_MODEL") or "gemini-flash-latest"
 AI_TIMEOUT = env_int("AI_TIMEOUT", 45)
 AI_MAX_INPUT_CHARS = env_int("AI_MAX_INPUT_CHARS", 3500)
+AI_DELAY_SECONDS = env_int("AI_DELAY_SECONDS", 12)
 AI_ENABLED = (os.getenv("AI_ENABLED") or "auto").lower()
 
 
@@ -510,7 +511,6 @@ def call_ai(item):
             {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
         ],
         "temperature": 0.2,
-        "response_format": {"type": "json_object"},
     }
 
     headers = {"Content-Type": "application/json"}
@@ -520,7 +520,7 @@ def call_ai(item):
     url = f"{AI_BASE_URL}/chat/completions"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
-    for attempt in range(2):
+    for attempt in range(4):
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=AI_TIMEOUT) as response:
@@ -529,9 +529,10 @@ def call_ai(item):
             return parse_json_from_text(content)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            if attempt == 0 and exc.code in {400, 422} and "response_format" in payload:
-                payload.pop("response_format", None)
-                data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            if exc.code == 429 and attempt < 3:
+                match = re.search(r"retry in ([0-9.]+)s", body, re.I)
+                wait_seconds = float(match.group(1)) + 2 if match else 20
+                time.sleep(min(wait_seconds, 90))
                 continue
             raise RuntimeError(f"AI request failed: HTTP {exc.code} {body[:500]}") from exc
 
@@ -580,6 +581,8 @@ def build_cards(items):
                 except Exception as exc:
                     print(f"Warning: AI failed for {item['link']}: {exc}", file=sys.stderr)
                     card = fallback_card(item, reason="failed")
+                if AI_DELAY_SECONDS > 0:
+                    time.sleep(AI_DELAY_SECONDS)
         else:
             card = fallback_card(item)
 
