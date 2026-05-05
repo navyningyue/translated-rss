@@ -520,7 +520,7 @@ def call_ai(item):
     url = f"{AI_BASE_URL}/chat/completions"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
-    for attempt in range(4):
+    for attempt in range(1):
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=AI_TIMEOUT) as response:
@@ -529,11 +529,6 @@ def call_ai(item):
             return parse_json_from_text(content)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            if exc.code == 429 and attempt < 3:
-                match = re.search(r"retry in ([0-9.]+)s", body, re.I)
-                wait_seconds = float(match.group(1)) + 2 if match else 20
-                time.sleep(min(wait_seconds, 90))
-                continue
             raise RuntimeError(f"AI request failed: HTTP {exc.code} {body[:500]}") from exc
 
 
