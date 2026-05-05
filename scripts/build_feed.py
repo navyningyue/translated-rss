@@ -41,8 +41,10 @@ USER_AGENT = os.getenv(
 )
 
 AI_API_KEY = os.getenv("AI_API_KEY") or ""
-AI_BASE_URL = (os.getenv("AI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-AI_MODEL = os.getenv("AI_MODEL") or "gpt-4o-mini"
+AI_BASE_URL = (
+    os.getenv("AI_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
+).rstrip("/")
+AI_MODEL = os.getenv("AI_MODEL") or "gemini-3-flash-preview"
 AI_TIMEOUT = env_int("AI_TIMEOUT", 45)
 AI_MAX_INPUT_CHARS = env_int("AI_MAX_INPUT_CHARS", 3500)
 AI_ENABLED = (os.getenv("AI_ENABLED") or "auto").lower()
@@ -534,13 +536,16 @@ def call_ai(item):
             raise RuntimeError(f"AI request failed: HTTP {exc.code} {body[:500]}") from exc
 
 
-def fallback_card(item):
+def fallback_card(item, reason="not_configured"):
     text = item.get("raw_summary") or item.get("excerpt") or item["link"]
     has_chinese = bool(re.search(r"[\u4e00-\u9fff]", item.get("title", "") + text))
     if has_chinese:
         summary = truncate(text, 140)
     else:
-        summary = "\u672a\u914d\u7f6e AI \u7ffb\u8bd1\uff0c\u6682\u663e\u793a\u539f\u6587\u6458\u8981\uff1a" + truncate(text, 120)
+        prefix = "\u672a\u914d\u7f6e AI \u7ffb\u8bd1\uff0c\u6682\u663e\u793a\u539f\u6587\u6458\u8981\uff1a"
+        if reason == "failed":
+            prefix = "AI \u5904\u7406\u5931\u8d25\uff0c\u6682\u663e\u793a\u539f\u6587\u6458\u8981\uff1a"
+        summary = prefix + truncate(text, 120)
     return {
         "title_zh": item.get("title") or slug_title(item["link"]),
         "topic_zh": item["source"],
@@ -574,7 +579,7 @@ def build_cards(items):
                     time.sleep(0.2)
                 except Exception as exc:
                     print(f"Warning: AI failed for {item['link']}: {exc}", file=sys.stderr)
-                    card = fallback_card(item)
+                    card = fallback_card(item, reason="failed")
         else:
             card = fallback_card(item)
 
