@@ -1,0 +1,59 @@
+name: Build translated RSS and deploy Pages
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  CONFIG_PATH: config/sources.json
+  OUTPUT_DIR: public
+  CACHE_DIR: .cache
+  MAX_TOTAL_ITEMS: "40"
+  AI_API_KEY: ${{ secrets.AI_API_KEY }}
+  AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+  AI_MODEL: ${{ vars.AI_MODEL }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Restore AI cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: ai-cache-${{ github.run_id }}
+          restore-keys: |
+            ai-cache-
+
+      - name: Build translated RSS
+        run: python scripts/build_feed.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

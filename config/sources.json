@@ -1,0 +1,42 @@
+{
+  "site": {
+    "title": "\u4e2d\u6587\u6280\u672f\u4fe1\u606f\u6d41",
+    "link": "https://example.com",
+    "description": "\u81ea\u52a8\u6293\u53d6 RSS / Sitemap\uff0c\u5e76\u751f\u6210\u4e2d\u6587\u4e3b\u9898\u548c\u7b80\u4ecb\u3002"
+  },
+  "settings": {
+    "max_items_per_source": 15
+  },
+  "sources": [
+    {
+      "name": "Engineering.com",
+      "enabled": true,
+      "type": "rss",
+      "url": "https://www.engineering.com/feed/",
+      "max_items": 10
+    },
+    {
+      "name": "\u673a\u5668\u4e4b\u5fc3",
+      "enabled": false,
+      "type": "sitemap",
+      "url": "https://www.jiqizhixin.com/shared/sitemap.xml.gz",
+      "include_any": [
+        "/articles/"
+      ],
+      "exclude_any": [
+        "/cable"
+      ],
+      "max_items": 10
+    },
+    {
+      "name": "DPIT",
+      "enabled": true,
+      "type": "sitemap",
+      "url": "https://dpit.lib00.com/sitemap.xml",
+      "include_any": [
+        "/zh/content/"
+      ],
+      "max_items": 6
+    }
+  ]
+}
